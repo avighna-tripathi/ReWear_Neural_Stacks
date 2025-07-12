@@ -39,7 +39,6 @@ function Signup() {
 
 
       alert("Account created! Please login.");
-      navigate("/login");
     } catch (err: any) {
       console.error("Signup failed", err.response?.data?.message || err.message);
       alert(err.response?.data?.message || "Signup failed");

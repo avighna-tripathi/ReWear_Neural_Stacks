@@ -25,7 +25,7 @@ exports.registerUser = async (req, res) => {
       token: generateToken(user._id),
        role: user.role
 
-    });
+    });console.log("Sign-Up Successfully Really")
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -34,9 +34,9 @@ exports.registerUser = async (req, res) => {
 // @desc    Login user
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
-
+  console.log(email)
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email });console.log(user)
     if (user && (await user.matchPassword(password))) {
       res.json({
         _id: user._id,
@@ -44,6 +44,7 @@ exports.loginUser = async (req, res) => {
         email: user.email,
         token: generateToken(user._id),
       });
+    console.log(token);
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
     }
