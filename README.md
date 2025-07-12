@@ -29,7 +29,9 @@ Add New Item Page
 Admin Role 
     Moderate and approve/reject item listings 
     Remove inappropriate or spam items 
-    Lightweight admin panel for oversight 
+    Lightweight admin panel for oversight
+
+video url : https://youtu.be/oXAFFfB_Ovg
 ```
 
 
