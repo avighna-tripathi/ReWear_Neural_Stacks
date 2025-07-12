@@ -9,7 +9,7 @@ function ItemDetail() {
   const item = {
     id: 1,
     title: "Vintage Denim Jacket",
-    description: "Beautiful vintage denim jacket in excellent condition. This classic piece features a relaxed fit and timeless style. Perfect for layering or wearing on its own. Has been well-maintained and shows minimal signs of wear. Originally purchased from a high-end boutique.",
+    description: "abcdef",
     images: [
       "https://images.pexels.com/photos/6461517/pexels-photo-6461517.jpeg?auto=compress&cs=tinysrgb&h=350",
       "https://images.pexels.com/photos/5424976/pexels-photo-5424976.jpeg?auto=compress&cs=tinysrgb&h=350",
@@ -23,16 +23,16 @@ function ItemDetail() {
     points: 35,
     tags: ["vintage", "denim", "casual", "unisex"],
     uploader: {
-      name: "Sarah Mitchell",
+      name: "Avighna Tripathi",
       rating: 4.8,
-      totalSwaps: 23,
-      memberSince: "March 2023",
-      avatar: "SM"
+      totalSwaps: 0,
+      memberSince: "July 2025",
+      avatar: "AV"
     },
-    uploadDate: "2024-01-20",
+    uploadDate: "2025-07-12",
     status: "Available",
-    views: 47,
-    likes: 12
+    views: 0,
+    likes: 0
   };
 
   const relatedItems = [

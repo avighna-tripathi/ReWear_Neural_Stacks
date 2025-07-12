@@ -2,12 +2,12 @@ import { Link } from "react-router-dom";
 
 function Dashboard() {
   const userProfile = {
-    name: "Sarah Johnson",
-    email: "sarah.johnson@email.com",
-    points: 125,
-    memberSince: "March 2024",
-    totalSwaps: 8,
-    itemsListed: 12
+    name: "Avighna Tripathi",
+    email: "avighnatripathi1102@gmail.com.com",
+    points: 0,
+    memberSince: "12 July 2025",
+    totalSwaps: 0,
+    itemsListed: 0
   };
 
   const myListings = [
