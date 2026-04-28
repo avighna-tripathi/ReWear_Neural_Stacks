@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}ReWear | Sustainable Fashion{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="container hero-grid">
+        <div>
+            <span class="eyebrow">Community Clothing Exchange</span>
+            <h1>Swap, share, and extend the life of every great outfit.</h1>
+            <p>ReWear helps your community trade unused clothing through a simple point-based system with real user accounts and item listings.</p>
+            <div class="hero-actions">
+                <a class="button button-primary" href="{% url 'browse' %}">Browse Items</a>
+                {% if user.is_authenticated %}
+                    <a class="button button-secondary" href="{% url 'add_item' %}">List an Item</a>
+                {% else %}
+                    <a class="button button-secondary" href="{% url 'signup' %}">Start Swapping</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="hero-card">
+            <div class="stat-grid">
+                <div><strong>{{ stats.items }}</strong><span>Items listed</span></div>
+                <div><strong>{{ stats.members }}</strong><span>Community members</span></div>
+                <div><strong>SQL</strong><span>Powered by SQLite</span></div>
+                <div><strong>Django</strong><span>Server-rendered templates</span></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="section-heading">
+            <h2>Shop by Category</h2>
+            <p>Start with the types of pieces people swap most often.</p>
+        </div>
+        <div class="category-grid">
+            {% for value, label in categories %}
+                <a class="category-card" href="{% url 'browse' %}?category={{ value }}">{{ label }}</a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="section section-alt">
+    <div class="container">
+        <div class="section-heading">
+            <h2>Recently Added</h2>
+            <p>Fresh community listings ready to browse.</p>
+        </div>
+        <div class="card-grid">
+            {% for item in featured_items %}
+                <a class="item-card" href="{% url 'item_detail' item.pk %}">
+                    {% if item.image %}
+                        <img src="{{ item.image.url }}" alt="{{ item.title }}">
+                    {% else %}
+                        <div class="image-placeholder">No image yet</div>
+                    {% endif %}
+                    <div class="item-card-body">
+                        <h3>{{ item.title }}</h3>
+                        <p>{{ item.get_category_display }} · Size {{ item.size }}</p>
+                        <div class="item-meta">
+                            <span>{{ item.points }} points</span>
+                            <span>{{ item.get_condition_display }}</span>
+                        </div>
+                    </div>
+                </a>
+            {% empty %}
+                <div class="empty-state">No items yet. Be the first to list one.</div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

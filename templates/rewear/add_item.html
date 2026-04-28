@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Add Item | ReWear{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container narrow">
+        <div class="section-heading">
+            <h1>List a New Item</h1>
+            <p>Upload a wearable item with details other members can trust.</p>
+        </div>
+        <form method="post" enctype="multipart/form-data" class="form-grid form-surface">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="form-errors form-full">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <div class="form-full">
+                <label for="{{ form.title.id_for_label }}">Title</label>
+                {{ form.title }}
+                {{ form.title.errors }}
+            </div>
+            <div class="form-full">
+                <label for="{{ form.description.id_for_label }}">Description</label>
+                {{ form.description }}
+                {{ form.description.errors }}
+            </div>
+            <div>
+                <label for="{{ form.category.id_for_label }}">Category</label>
+                {{ form.category }}
+                {{ form.category.errors }}
+            </div>
+            <div>
+                <label for="{{ form.item_type.id_for_label }}">Type</label>
+                {{ form.item_type }}
+                {{ form.item_type.errors }}
+            </div>
+            <div>
+                <label for="{{ form.size.id_for_label }}">Size</label>
+                {{ form.size }}
+                {{ form.size.errors }}
+            </div>
+            <div>
+                <label for="{{ form.condition.id_for_label }}">Condition</label>
+                {{ form.condition }}
+                {{ form.condition.errors }}
+            </div>
+            <div>
+                <label for="{{ form.points.id_for_label }}">Points</label>
+                {{ form.points }}
+                {{ form.points.errors }}
+            </div>
+            <div>
+                <label for="{{ form.image.id_for_label }}">Image</label>
+                {{ form.image }}
+                {{ form.image.errors }}
+            </div>
+            <div class="form-full">
+                <label for="{{ form.tags.id_for_label }}">Tags</label>
+                {{ form.tags }}
+                {{ form.tags.errors }}
+            </div>
+            <div class="form-full">
+                <button class="button button-primary" type="submit">Publish Item</button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

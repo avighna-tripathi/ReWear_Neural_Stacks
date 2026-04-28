@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up | ReWear{% endblock %}
+
+{% block content %}
+<section class="auth-shell">
+    <div class="auth-card auth-card-wide">
+        <h1>Create your account</h1>
+        <p>Join the exchange and start listing wearable pieces.</p>
+        <form method="post" class="form-grid">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="form-errors form-full">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <div>
+                <label for="{{ form.first_name.id_for_label }}">First name</label>
+                {{ form.first_name }}
+                {{ form.first_name.errors }}
+            </div>
+            <div>
+                <label for="{{ form.last_name.id_for_label }}">Last name</label>
+                {{ form.last_name }}
+                {{ form.last_name.errors }}
+            </div>
+            <div class="form-full">
+                <label for="{{ form.email.id_for_label }}">Email</label>
+                {{ form.email }}
+                {{ form.email.errors }}
+            </div>
+            <div>
+                <label for="{{ form.password1.id_for_label }}">Password</label>
+                {{ form.password1 }}
+                {{ form.password1.errors }}
+            </div>
+            <div>
+                <label for="{{ form.password2.id_for_label }}">Confirm password</label>
+                {{ form.password2 }}
+                {{ form.password2.errors }}
+            </div>
+            <div class="form-full">
+                <button class="button button-primary button-block" type="submit">Create account</button>
+            </div>
+        </form>
+        <p class="auth-switch">Already have an account? <a href="{% url 'login' %}">Sign in</a></p>
+    </div>
+</section>
+{% endblock %}

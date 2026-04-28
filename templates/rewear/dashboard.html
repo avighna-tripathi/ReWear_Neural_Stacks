@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | ReWear{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <div class="profile-panel">
+            <div>
+                <span class="eyebrow">My Dashboard</span>
+                <h1>{{ user.get_full_name|default:user.username }}</h1>
+                <p>{{ user.email }}</p>
+            </div>
+            <div class="profile-stats">
+                <div><strong>{{ total_points }}</strong><span>Points</span></div>
+                <div><strong>{{ item_count }}</strong><span>Items listed</span></div>
+                <div><strong>{{ available_count }}</strong><span>Available</span></div>
+            </div>
+        </div>
+
+        <div class="section-heading">
+            <h2>My Listings</h2>
+            <p>Everything you have uploaded to ReWear.</p>
+        </div>
+        <div class="card-grid">
+            {% for item in items %}
+                <a class="item-card" href="{% url 'item_detail' item.pk %}">
+                    {% if item.image %}
+                        <img src="{{ item.image.url }}" alt="{{ item.title }}">
+                    {% else %}
+                        <div class="image-placeholder">No image yet</div>
+                    {% endif %}
+                    <div class="item-card-body">
+                        <h3>{{ item.title }}</h3>
+                        <p>{{ item.get_category_display }} · {{ item.get_condition_display }}</p>
+                        <div class="item-meta">
+                            <span>{{ item.points }} points</span>
+                            <span>{{ item.get_status_display }}</span>
+                        </div>
+                    </div>
+                </a>
+            {% empty %}
+                <div class="empty-state">
+                    You have not listed anything yet. <a href="{% url 'add_item' %}">Add your first item</a>.
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

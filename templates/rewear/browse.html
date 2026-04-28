@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Browse | ReWear{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <div class="section-heading">
+            <h1>Browse Items</h1>
+            <p>Search the community closet and filter by category.</p>
+        </div>
+        <form method="get" class="filter-bar">
+            <input type="text" name="q" value="{{ query }}" placeholder="Search by title, description, or tag">
+            <select name="category">
+                <option value="">All categories</option>
+                {% for value, label in categories %}
+                    <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <select name="sort">
+                <option value="newest" {% if selected_sort == "newest" %}selected{% endif %}>Newest first</option>
+                <option value="oldest" {% if selected_sort == "oldest" %}selected{% endif %}>Oldest first</option>
+                <option value="points-low" {% if selected_sort == "points-low" %}selected{% endif %}>Points low to high</option>
+                <option value="points-high" {% if selected_sort == "points-high" %}selected{% endif %}>Points high to low</option>
+            </select>
+            <button class="button button-primary" type="submit">Apply</button>
+        </form>
+
+        <div class="card-grid">
+            {% for item in items %}
+                <a class="item-card" href="{% url 'item_detail' item.pk %}">
+                    {% if item.image %}
+                        <img src="{{ item.image.url }}" alt="{{ item.title }}">
+                    {% else %}
+                        <div class="image-placeholder">No image yet</div>
+                    {% endif %}
+                    <div class="item-card-body">
+                        <h3>{{ item.title }}</h3>
+                        <p>{{ item.get_category_display }} · Size {{ item.size }}</p>
+                        <div class="item-meta">
+                            <span>{{ item.points }} points</span>
+                            <span>{{ item.owner.get_full_name|default:item.owner.username }}</span>
+                        </div>
+                    </div>
+                </a>
+            {% empty %}
+                <div class="empty-state">No items matched your filters.</div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

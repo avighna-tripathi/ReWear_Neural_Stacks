@@ -1,37 +1,56 @@
-```
-Problem -3 
-ReWear – Community Clothing Exchange 
-Overview: 
-    Develop ReWear, a web-based platform that enables users to exchange unused clothing 
-    through direct swaps or a point-based redemption system. The goal is to promote sustainable 
-    fashion and reduce textile waste by encouraging users to reuse wearable garments instead of 
-    discarding them. 
-Features: 
-    User Authentication 
-    Email/password signup and login 
-Landing Page 
-    Platform introduction 
-    Calls-to-action: “Start Swapping”, “Browse Items”, “List an Item” 
-    Featured items carousel 
-User Dashboard 
-    Profile details and points balance 
-    Uploaded items overview 
-    Ongoing and completed swaps list 
-Item Detail Page 
-    Image gallery and full item description 
-    Uploader info 
-    Options: “Swap Request” or “Redeem via Points” 
-    Item availability status 
-Add New Item Page 
-    Upload images 
-    Enter title, description, category, type, size, condition, and tags 
-    Submit to list item 
-Admin Role 
-    Moderate and approve/reject item listings 
-    Remove inappropriate or spam items 
-    Lightweight admin panel for oversight
+# ReWear
 
-video url : https://youtu.be/oXAFFfB_Ovg
+ReWear is now a Django application with server-rendered templates and a MySQL database.
+
+## Stack
+
+- Backend: Django
+- Frontend: Django templates
+- Database: MySQL
+- File uploads: Django media storage
+
+## Working flows
+
+- Sign up with email and password
+- Log in and log out using Django auth
+- Upload a new clothing item with an image
+- Browse listed items
+- View your own dashboard and item listings
+
+## Run locally
+
+1. Create a virtual environment and install dependencies:
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
+2. Copy the environment file and fill in your MySQL credentials:
 
+```bash
+copy .env.example .env
+```
+
+3. Run migrations:
+
+```bash
+python manage.py migrate
+```
+
+4. Start the server:
+
+```bash
+python manage.py runserver
+```
+
+5. Open:
+
+- App: `http://127.0.0.1:8000/`
+- Admin: `http://127.0.0.1:8000/admin/`
+
+## Notes
+
+- Uploaded files are stored in the local `media/` folder.
+- Django reads MySQL connection values from the root `.env` file.
