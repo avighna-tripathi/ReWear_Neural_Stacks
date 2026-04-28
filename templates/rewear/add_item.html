@@ -52,6 +52,9 @@
             <div>
                 <label for="{{ form.image.id_for_label }}">Image</label>
                 {{ form.image }}
+                {% if form.image.help_text %}
+                    <p class="field-help">{{ form.image.help_text }}</p>
+                {% endif %}
                 {{ form.image.errors }}
             </div>
             <div class="form-full">

@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 
 from .models import Item
 
@@ -37,6 +38,12 @@ class SignUpForm(UserCreationForm):
 
 
 class ItemForm(forms.ModelForm):
+    image = forms.ImageField(
+        required=False,
+        help_text="Upload a JPG, PNG, WEBP, or GIF image up to 5 MB.",
+        widget=forms.ClearableFileInput(attrs={"accept": "image/*"}),
+    )
+
     class Meta:
         model = Item
         fields = [
@@ -53,3 +60,17 @@ class ItemForm(forms.ModelForm):
         widgets = {
             "description": forms.Textarea(attrs={"rows": 5}),
         }
+
+    def clean_image(self):
+        image = self.cleaned_data.get("image")
+        if not image:
+            return image
+
+        if image.size > 5 * 1024 * 1024:
+            raise ValidationError("Image size must be 5 MB or smaller.")
+
+        allowed_types = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+        if getattr(image, "content_type", "") not in allowed_types:
+            raise ValidationError("Please upload a JPG, PNG, WEBP, or GIF image.")
+
+        return image
