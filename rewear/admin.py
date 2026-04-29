@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
 from django.utils.html import format_html
 
-from .models import Item, UserProfile
+from .models import Conversation, Item, Message, Swap, UserProfile
 
 
 admin.site.site_header = "ReWear Admin"
@@ -66,3 +66,25 @@ class ItemAdmin(admin.ModelAdmin):
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ("user", "points")
     search_fields = ("user__username", "user__email")
+
+
+@admin.register(Swap)
+class SwapAdmin(admin.ModelAdmin):
+    list_display = ("item", "initiator", "recipient", "status", "points_delta", "created_at", "completed_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("item__title", "initiator__username", "recipient__username", "initiator__email", "recipient__email")
+    autocomplete_fields = ("item", "initiator", "recipient")
+
+
+@admin.register(Conversation)
+class ConversationAdmin(admin.ModelAdmin):
+    list_display = ("item", "participant_one", "participant_two", "swap", "updated_at")
+    search_fields = ("item__title", "participant_one__username", "participant_two__username")
+    autocomplete_fields = ("item", "swap", "participant_one", "participant_two")
+
+
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
+    list_display = ("conversation", "sender", "created_at")
+    search_fields = ("conversation__item__title", "sender__username", "body")
+    autocomplete_fields = ("conversation", "sender")

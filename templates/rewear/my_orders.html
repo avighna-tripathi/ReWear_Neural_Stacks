@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}My Orders | ReWear{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <div class="section-heading">
+            <h1>My Orders</h1>
+            <p>Everything related to requests you placed, deliveries coming to you, and the items you currently hold.</p>
+        </div>
+
+        <div class="stats-strip">
+            <div class="mini-stat">
+                <strong>{{ outgoing_swaps|length }}</strong>
+                <span>Pending outgoing requests</span>
+            </div>
+            <div class="mini-stat">
+                <strong>{{ completed_swaps_needing_address|length }}</strong>
+                <span>Orders awaiting your address</span>
+            </div>
+            <div class="mini-stat">
+                <strong>{{ buyer_delivery_actions|length }}</strong>
+                <span>Shipments to confirm</span>
+            </div>
+        </div>
+
+        <div class="section-heading">
+            <h2>Items I Currently Hold</h2>
+            <p>Your live community wardrobe, including items received via successful swaps.</p>
+        </div>
+        <div class="card-grid">
+            {% for item in held_items %}
+                <a class="item-card" href="{% url 'item_detail' item.pk %}">
+                    {% if item.image %}
+                        <img src="{{ item.image.url }}" alt="{{ item.title }}">
+                    {% else %}
+                        <div class="image-placeholder">No image yet</div>
+                    {% endif %}
+                    <div class="item-card-body">
+                        <h3>{{ item.title }}</h3>
+                        <p>Owner: {{ item.owner.first_name|default:item.owner.username }}</p>
+                        <div class="item-meta">
+                            <span>{{ item.points }} points</span>
+                            <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
+                        </div>
+                    </div>
+                </a>
+            {% empty %}
+                <div class="empty-state">You are not holding any items right now.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Outgoing Requests</h2>
+            <p>Requests you have sent and are still waiting on.</p>
+        </div>
+        <div class="swap-list">
+            {% for swap in outgoing_swaps %}
+                <div class="swap-row">
+                    <div>
+                        <strong>{{ swap.item.title|default:"Removed listing" }}</strong>
+                        <p>Waiting on {{ swap.recipient.first_name|default:swap.recipient.username }} to respond.</p>
+                    </div>
+                    <div class="swap-meta">
+                        <span>{{ swap.points_delta }} points</span>
+                        <span class="status-badge status-{{ swap.status }}">{{ swap.get_status_display }}</span>
+                        <form method="post" action="{% url 'update_swap_status' swap.pk 'cancel' %}">
+                            {% csrf_token %}
+                            <button class="button button-secondary" type="submit">Cancel Request</button>
+                        </form>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">You do not have any pending outgoing requests.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Share Private Address</h2>
+            <p>Once a swap is completed, submit your address privately so the owner can send the item to you.</p>
+        </div>
+        <div class="swap-list">
+            {% for swap in completed_swaps_needing_address %}
+                <div class="swap-row address-row">
+                    <div>
+                        <strong>{{ swap.item.title|default:"Removed listing" }}</strong>
+                        <p>Enter your delivery address for {{ swap.recipient.first_name|default:swap.recipient.username }}.</p>
+                    </div>
+                    <form method="post" action="{% url 'submit_shipping_address' swap.pk %}" class="address-form">
+                        {% csrf_token %}
+                        {{ swap.address_form.delivery_name }}
+                        {{ swap.address_form.delivery_phone }}
+                        {{ swap.address_form.delivery_line1 }}
+                        {{ swap.address_form.delivery_line2 }}
+                        <div class="address-grid">
+                            {{ swap.address_form.delivery_city }}
+                            {{ swap.address_form.delivery_state }}
+                            {{ swap.address_form.delivery_postal_code }}
+                        </div>
+                        {{ swap.address_form.delivery_notes }}
+                        <button class="button button-primary" type="submit">Share Address Privately</button>
+                    </form>
+                </div>
+            {% empty %}
+                <div class="empty-state">No completed orders are waiting on your address.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Confirm Deliveries</h2>
+            <p>Mark shipped parcels as delivered once they reach you.</p>
+        </div>
+        <div class="swap-list">
+            {% for swap in buyer_delivery_actions %}
+                <div class="swap-row">
+                    <div>
+                        <strong>{{ swap.item.title|default:"Removed listing" }}</strong>
+                        <p>{{ swap.recipient.first_name|default:swap.recipient.username }} marked this as shipped.</p>
+                    </div>
+                    <div class="swap-meta">
+                        <span class="status-badge status-{{ swap.fulfillment_status }}">{{ swap.get_fulfillment_status_display }}</span>
+                        <form method="post" action="{% url 'update_swap_status' swap.pk 'deliver' %}">
+                            {% csrf_token %}
+                            <button class="button button-primary" type="submit">Mark as Delivered</button>
+                        </form>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">No parcels are currently waiting for your delivery confirmation.</div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

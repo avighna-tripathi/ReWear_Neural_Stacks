@@ -26,6 +26,13 @@
             <button class="button button-primary" type="submit">Apply</button>
         </form>
 
+        <div class="chip-row">
+            <a class="category-chip {% if not selected_category %}active{% endif %}" href="{% url 'browse' %}?q={{ query|urlencode }}&sort={{ selected_sort }}">All</a>
+            {% for value, label in categories %}
+                <a class="category-chip {% if selected_category == value %}active{% endif %}" href="{% url 'browse' %}?q={{ query|urlencode }}&category={{ value }}&sort={{ selected_sort }}">{{ label }}</a>
+            {% endfor %}
+        </div>
+
         <div class="card-grid">
             {% for item in items %}
                 <a class="item-card" href="{% url 'item_detail' item.pk %}">
@@ -41,12 +48,27 @@
                             <span>{{ item.points }} points</span>
                             <span>{{ item.owner.get_full_name|default:item.owner.username }}</span>
                         </div>
+                        <div class="top-gap-small">
+                            <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
+                        </div>
                     </div>
                 </a>
             {% empty %}
                 <div class="empty-state">No items matched your filters.</div>
             {% endfor %}
         </div>
+
+        {% if page_obj.paginator.num_pages > 1 %}
+            <div class="pagination-bar">
+                {% if page_obj.has_previous %}
+                    <a class="button button-secondary" href="?q={{ query|urlencode }}&category={{ selected_category }}&sort={{ selected_sort }}&page={{ page_obj.previous_page_number }}">Previous</a>
+                {% endif %}
+                <span class="pagination-label">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                {% if page_obj.has_next %}
+                    <a class="button button-secondary" href="?q={{ query|urlencode }}&category={{ selected_category }}&sort={{ selected_sort }}&page={{ page_obj.next_page_number }}">Next</a>
+                {% endif %}
+            </div>
+        {% endif %}
     </div>
 </section>
 {% endblock %}

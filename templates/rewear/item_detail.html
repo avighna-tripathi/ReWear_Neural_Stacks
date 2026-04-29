@@ -34,10 +34,42 @@
                         {% endfor %}
                     </div>
                 </div>
+
+                <div class="action-panel">
+                    <h3>Swap Options</h3>
+                    {% if not user.is_authenticated %}
+                        <p class="muted">Log in to request a swap, redeem with points, or privately message the owner.</p>
+                        <a class="button button-primary" href="{% url 'login' %}">Login to Continue</a>
+                    {% elif item.owner_id == user.id %}
+                        <p class="muted">This is your listing. Incoming requests, delivery details, and chat all appear on your dashboard.</p>
+                    {% elif item.status != "available" %}
+                        <p class="muted">This item already has an active or completed swap flow and cannot take a new request right now.</p>
+                        <a class="button button-secondary" href="{% url 'open_item_conversation' item.pk %}">Message Owner</a>
+                    {% elif existing_pending_swap %}
+                        <p class="muted">You already have a pending request for this item. Track it from your dashboard.</p>
+                        <a class="button button-secondary" href="{% url 'open_item_conversation' item.pk %}">Open Chat</a>
+                    {% else %}
+                        <div class="action-buttons">
+                            <form method="post" action="{% url 'create_swap_request' item.pk %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action_type" value="swap">
+                                <button class="button button-primary" type="submit">Request Swap</button>
+                            </form>
+                            <form method="post" action="{% url 'create_swap_request' item.pk %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action_type" value="redeem">
+                                <button class="button button-secondary" type="submit">Redeem with Points</button>
+                            </form>
+                            <a class="button button-secondary" href="{% url 'open_item_conversation' item.pk %}">Message Owner</a>
+                        </div>
+                    {% endif %}
+                </div>
+
                 <div class="owner-card">
                     <h3>Listed by</h3>
                     <p>{{ item.owner.get_full_name|default:item.owner.username }}</p>
                     <p class="muted">{{ item.owner.email }}</p>
+                    <p class="muted">Current holder: {{ item.holder.get_full_name|default:item.holder.username }}</p>
                 </div>
             </div>
         </div>

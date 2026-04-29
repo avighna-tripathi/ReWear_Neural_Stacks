@@ -74,3 +74,21 @@ class ItemForm(forms.ModelForm):
             raise ValidationError("Please upload a JPG, PNG, WEBP, or GIF image.")
 
         return image
+
+
+class ShippingAddressForm(forms.Form):
+    delivery_name = forms.CharField(max_length=120)
+    delivery_phone = forms.CharField(max_length=30)
+    delivery_line1 = forms.CharField(max_length=255, label="Address line 1")
+    delivery_line2 = forms.CharField(max_length=255, required=False, label="Address line 2")
+    delivery_city = forms.CharField(max_length=120)
+    delivery_state = forms.CharField(max_length=120)
+    delivery_postal_code = forms.CharField(max_length=20, label="Postal code")
+    delivery_notes = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), required=False)
+
+
+class MessageForm(forms.Form):
+    body = forms.CharField(
+        max_length=1000,
+        widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Write a message about sizing, pickup, or shipping..."}),
+    )

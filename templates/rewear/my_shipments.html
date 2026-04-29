@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}My Shipments | ReWear{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <div class="section-heading">
+            <h1>My Shipments</h1>
+            <p>Everything you need to ship items out, track completed shares, and manage addresses sent only to you.</p>
+        </div>
+
+        <div class="stats-strip">
+            <div class="mini-stat">
+                <strong>{{ owner_shipping_actions|length }}</strong>
+                <span>Packages ready to ship</span>
+            </div>
+            <div class="mini-stat">
+                <strong>{{ shared_items|length }}</strong>
+                <span>Items shared away</span>
+            </div>
+            <div class="mini-stat">
+                <strong>{{ completed_swaps_with_address|length }}</strong>
+                <span>Addresses shared privately</span>
+            </div>
+        </div>
+
+        <div class="section-heading">
+            <h2>Addresses Shared With You</h2>
+            <p>Only you can see these shipping details for completed swaps where you are the original owner.</p>
+        </div>
+        <div class="swap-list">
+            {% for swap in completed_swaps_with_address %}
+                <div class="swap-row address-row">
+                    <div>
+                        <strong>{{ swap.item.title|default:"Removed listing" }}</strong>
+                        <p>Send this item to {{ swap.initiator.first_name|default:swap.initiator.username }}.</p>
+                    </div>
+                    <div class="private-address">
+                        <strong>{{ swap.delivery_name }}</strong>
+                        <p>{{ swap.delivery_phone }}</p>
+                        <p>{{ swap.delivery_line1 }}</p>
+                        {% if swap.delivery_line2 %}<p>{{ swap.delivery_line2 }}</p>{% endif %}
+                        <p>{{ swap.delivery_city }}, {{ swap.delivery_state }} {{ swap.delivery_postal_code }}</p>
+                        {% if swap.delivery_notes %}<p class="muted">{{ swap.delivery_notes }}</p>{% endif %}
+                        <p class="muted">Fulfillment: {{ swap.get_fulfillment_status_display }}</p>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">No private addresses have been shared with you yet.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Ready to Ship</h2>
+            <p>Use this queue to mark completed swaps as shipped after packing them.</p>
+        </div>
+        <div class="swap-list">
+            {% for swap in owner_shipping_actions %}
+                <div class="swap-row">
+                    <div>
+                        <strong>{{ swap.item.title|default:"Removed listing" }}</strong>
+                        <p>{{ swap.initiator.first_name|default:swap.initiator.username }} has shared their address.</p>
+                    </div>
+                    <div class="swap-meta">
+                        <span class="status-badge status-{{ swap.fulfillment_status }}">{{ swap.get_fulfillment_status_display }}</span>
+                        {% if swap.fulfillment_status == "ready_to_ship" %}
+                            <form method="post" action="{% url 'update_swap_status' swap.pk 'ship' %}">
+                                {% csrf_token %}
+                                <button class="button button-primary" type="submit">Mark as Shipped</button>
+                            </form>
+                        {% elif swap.fulfillment_status == "shipped" %}
+                            <span class="muted">Already shipped</span>
+                        {% elif swap.fulfillment_status == "delivered" %}
+                            <span class="muted">Delivered successfully</span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">No outgoing packages are waiting to be shipped.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Items You Have Shared Away</h2>
+            <p>Keep an eye on everything that has left your collection through the community.</p>
+        </div>
+        <div class="card-grid">
+            {% for item in shared_items %}
+                <a class="item-card" href="{% url 'item_detail' item.pk %}">
+                    {% if item.image %}
+                        <img src="{{ item.image.url }}" alt="{{ item.title }}">
+                    {% else %}
+                        <div class="image-placeholder">No image yet</div>
+                    {% endif %}
+                    <div class="item-card-body">
+                        <h3>{{ item.title }}</h3>
+                        <p>Now with {{ item.holder.first_name|default:item.holder.username }}</p>
+                        <div class="item-meta">
+                            <span>{{ item.points }} points</span>
+                            <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
+                        </div>
+                    </div>
+                </a>
+            {% empty %}
+                <div class="empty-state">You have not shipped any community items yet.</div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

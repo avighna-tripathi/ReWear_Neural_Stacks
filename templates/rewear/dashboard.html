@@ -14,16 +14,45 @@
             <div class="profile-stats">
                 <div><strong>{{ total_points }}</strong><span>Points</span></div>
                 <div><strong>{{ item_count }}</strong><span>Items listed</span></div>
+                <div><strong>{{ held_items|length }}</strong><span>Items I hold</span></div>
                 <div><strong>{{ available_count }}</strong><span>Available</span></div>
+                <div><strong>{{ pending_items_count }}</strong><span>Pending items</span></div>
+                <div><strong>{{ swapped_items_count }}</strong><span>Shared away</span></div>
             </div>
         </div>
 
+        <div class="stats-strip">
+            <div class="mini-stat">
+                <strong>{{ pending_swaps_count }}</strong>
+                <span>Open swap requests</span>
+            </div>
+            <div class="mini-stat">
+                <strong>{{ incoming_pending_count }}</strong>
+                <span>Awaiting your response</span>
+            </div>
+            <div class="mini-stat">
+                <strong>{{ completed_swaps_count }}</strong>
+                <span>Total successful swaps</span>
+            </div>
+        </div>
+
+        <div class="quick-links-panel">
+            <a class="quick-link-card" href="{% url 'my_orders' %}">
+                <strong>My Orders</strong>
+                <span>Requests, private addresses, and delivery confirmations.</span>
+            </a>
+            <a class="quick-link-card" href="{% url 'my_shipments' %}">
+                <strong>My Shipments</strong>
+                <span>Addresses received, ship actions, and items you have shared away.</span>
+            </a>
+        </div>
+
         <div class="section-heading">
-            <h2>My Listings</h2>
-            <p>Everything you have uploaded to ReWear.</p>
+            <h2>Items I Currently Hold</h2>
+            <p>Your current wardrobe inside the community, including your own and received items.</p>
         </div>
         <div class="card-grid">
-            {% for item in items %}
+            {% for item in held_items %}
                 <a class="item-card" href="{% url 'item_detail' item.pk %}">
                     {% if item.image %}
                         <img src="{{ item.image.url }}" alt="{{ item.title }}">
@@ -32,17 +61,311 @@
                     {% endif %}
                     <div class="item-card-body">
                         <h3>{{ item.title }}</h3>
-                        <p>{{ item.get_category_display }} · {{ item.get_condition_display }}</p>
+                        <p>Owner: {{ item.owner.first_name|default:item.owner.username }}</p>
                         <div class="item-meta">
                             <span>{{ item.points }} points</span>
-                            <span>{{ item.get_status_display }}</span>
+                            <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
                         </div>
                     </div>
                 </a>
             {% empty %}
-                <div class="empty-state">
-                    You have not listed anything yet. <a href="{% url 'add_item' %}">Add your first item</a>.
+                <div class="empty-state">You do not currently hold any items.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Items Received Through Swaps</h2>
+            <p>Listings that started with someone else and are now with you.</p>
+        </div>
+        <div class="card-grid">
+            {% for item in received_items %}
+                <a class="item-card" href="{% url 'item_detail' item.pk %}">
+                    {% if item.image %}
+                        <img src="{{ item.image.url }}" alt="{{ item.title }}">
+                    {% else %}
+                        <div class="image-placeholder">No image yet</div>
+                    {% endif %}
+                    <div class="item-card-body">
+                        <h3>{{ item.title }}</h3>
+                        <p>Originally listed by {{ item.owner.first_name|default:item.owner.username }}</p>
+                        <div class="item-meta">
+                            <span>{{ item.points }} points</span>
+                            <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
+                        </div>
+                    </div>
+                </a>
+            {% empty %}
+                <div class="empty-state">You have not received any community items yet.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Items You Have Shared Away</h2>
+            <p>Completed swaps where another community member now holds your item.</p>
+        </div>
+        <div class="card-grid">
+            {% for item in shared_items %}
+                <a class="item-card" href="{% url 'item_detail' item.pk %}">
+                    {% if item.image %}
+                        <img src="{{ item.image.url }}" alt="{{ item.title }}">
+                    {% else %}
+                        <div class="image-placeholder">No image yet</div>
+                    {% endif %}
+                    <div class="item-card-body">
+                        <h3>{{ item.title }}</h3>
+                        <p>Now with {{ item.holder.first_name|default:item.holder.username }}</p>
+                        <div class="item-meta">
+                            <span>{{ item.points }} points</span>
+                            <span class="status-badge status-{{ item.status }}">{{ item.get_status_display }}</span>
+                        </div>
+                    </div>
+                </a>
+            {% empty %}
+                <div class="empty-state">You have not shared any items away yet.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Incoming Requests</h2>
+            <p>Accept a request to complete it, or decline it to reopen the item.</p>
+        </div>
+        <div class="swap-list">
+            {% for swap in incoming_swaps %}
+                <div class="swap-row">
+                    <div>
+                        <strong>{{ swap.item.title|default:"Removed listing" }}</strong>
+                        <p>{{ swap.initiator.first_name|default:swap.initiator.username }} wants this item.</p>
+                    </div>
+                    <div class="swap-meta">
+                        <span>{{ swap.points_delta }} points</span>
+                        <span class="status-badge status-{{ swap.status }}">{{ swap.get_status_display }}</span>
+                        <form method="post" action="{% url 'update_swap_status' swap.pk 'complete' %}">
+                            {% csrf_token %}
+                            <button class="button button-primary" type="submit">Accept</button>
+                        </form>
+                        <form method="post" action="{% url 'update_swap_status' swap.pk 'cancel' %}">
+                            {% csrf_token %}
+                            <button class="button button-secondary" type="submit">Decline</button>
+                        </form>
+                    </div>
                 </div>
+            {% empty %}
+                <div class="empty-state">No incoming requests waiting on you right now.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Outgoing Requests</h2>
+            <p>Track requests you have already sent to other community members.</p>
+        </div>
+        <div class="swap-list">
+            {% for swap in outgoing_swaps %}
+                <div class="swap-row">
+                    <div>
+                        <strong>{{ swap.item.title|default:"Removed listing" }}</strong>
+                        <p>Waiting on {{ swap.recipient.first_name|default:swap.recipient.username }} to respond.</p>
+                    </div>
+                    <div class="swap-meta">
+                        <span>{{ swap.points_delta }} points</span>
+                        <span class="status-badge status-{{ swap.status }}">{{ swap.get_status_display }}</span>
+                        <form method="post" action="{% url 'update_swap_status' swap.pk 'cancel' %}">
+                            {% csrf_token %}
+                            <button class="button button-secondary" type="submit">Cancel Request</button>
+                        </form>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">You have no outgoing requests at the moment.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Private Shipping Details</h2>
+            <p>After a successful swap, the requester shares their address privately so the original owner can send the item.</p>
+        </div>
+        <div class="swap-list">
+            {% for swap in completed_swaps_needing_address %}
+                <div class="swap-row address-row">
+                    <div>
+                        <strong>{{ swap.item.title|default:"Removed listing" }}</strong>
+                        <p>Enter your delivery address for {{ swap.recipient.first_name|default:swap.recipient.username }}.</p>
+                    </div>
+                    <form method="post" action="{% url 'submit_shipping_address' swap.pk %}" class="address-form">
+                        {% csrf_token %}
+                        {{ swap.address_form.delivery_name }}
+                        {{ swap.address_form.delivery_phone }}
+                        {{ swap.address_form.delivery_line1 }}
+                        {{ swap.address_form.delivery_line2 }}
+                        <div class="address-grid">
+                            {{ swap.address_form.delivery_city }}
+                            {{ swap.address_form.delivery_state }}
+                            {{ swap.address_form.delivery_postal_code }}
+                        </div>
+                        {{ swap.address_form.delivery_notes }}
+                        <button class="button button-primary" type="submit">Share Address Privately</button>
+                    </form>
+                </div>
+            {% empty %}
+                <div class="empty-state">No completed swaps are waiting on your shipping details.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Addresses Shared With You</h2>
+            <p>Only you can see these addresses for swaps where you are the original owner.</p>
+        </div>
+        <div class="swap-list">
+            {% for swap in completed_swaps_with_address %}
+                <div class="swap-row address-row">
+                    <div>
+                        <strong>{{ swap.item.title|default:"Removed listing" }}</strong>
+                        <p>Send this item to {{ swap.initiator.first_name|default:swap.initiator.username }}.</p>
+                    </div>
+                    <div class="private-address">
+                        <strong>{{ swap.delivery_name }}</strong>
+                        <p>{{ swap.delivery_phone }}</p>
+                        <p>{{ swap.delivery_line1 }}</p>
+                        {% if swap.delivery_line2 %}<p>{{ swap.delivery_line2 }}</p>{% endif %}
+                        <p>{{ swap.delivery_city }}, {{ swap.delivery_state }} {{ swap.delivery_postal_code }}</p>
+                        {% if swap.delivery_notes %}<p class="muted">{{ swap.delivery_notes }}</p>{% endif %}
+                        <p class="muted">Fulfillment: {{ swap.get_fulfillment_status_display }}</p>
+                        {% if swap.shipped_at %}<p class="muted">Shipped: {{ swap.shipped_at|date:"M d, Y H:i" }}</p>{% endif %}
+                        {% if swap.delivered_at %}<p class="muted">Delivered: {{ swap.delivered_at|date:"M d, Y H:i" }}</p>{% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">No private delivery addresses have been shared with you yet.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Shipping Progress</h2>
+            <p>Move completed swaps forward after address exchange.</p>
+        </div>
+        <div class="swap-list">
+            {% for swap in owner_shipping_actions %}
+                <div class="swap-row">
+                    <div>
+                        <strong>{{ swap.item.title|default:"Removed listing" }}</strong>
+                        <p>{{ swap.initiator.first_name|default:swap.initiator.username }} has shared their address.</p>
+                    </div>
+                    <div class="swap-meta">
+                        <span class="status-badge status-{{ swap.fulfillment_status }}">{{ swap.get_fulfillment_status_display }}</span>
+                        {% if swap.fulfillment_status == "ready_to_ship" %}
+                            <form method="post" action="{% url 'update_swap_status' swap.pk 'ship' %}">
+                                {% csrf_token %}
+                                <button class="button button-primary" type="submit">Mark as Shipped</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">No swaps are waiting for you to ship an item.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Confirm Deliveries</h2>
+            <p>Mark a swap as delivered after the parcel reaches you.</p>
+        </div>
+        <div class="swap-list">
+            {% for swap in buyer_delivery_actions %}
+                <div class="swap-row">
+                    <div>
+                        <strong>{{ swap.item.title|default:"Removed listing" }}</strong>
+                        <p>{{ swap.recipient.first_name|default:swap.recipient.username }} marked this package as shipped.</p>
+                    </div>
+                    <div class="swap-meta">
+                        <span class="status-badge status-{{ swap.fulfillment_status }}">{{ swap.get_fulfillment_status_display }}</span>
+                        <form method="post" action="{% url 'update_swap_status' swap.pk 'deliver' %}">
+                            {% csrf_token %}
+                            <button class="button button-primary" type="submit">Mark as Delivered</button>
+                        </form>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">No shipped parcels are waiting for your delivery confirmation.</div>
+            {% endfor %}
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Community Chat</h2>
+            <p>Private conversations between two users around a listing or swap.</p>
+        </div>
+        <div class="chat-layout">
+            <div class="conversation-list">
+                {% for conversation in conversations %}
+                    <a class="conversation-link {% if active_conversation and active_conversation.pk == conversation.pk %}active{% endif %}" href="{% url 'dashboard' %}?conversation={{ conversation.pk }}">
+                        <div class="conversation-row">
+                            <strong>{{ conversation.item.title }}</strong>
+                            {% if conversation.unread_count %}
+                                <span class="unread-badge">{{ conversation.unread_count }}</span>
+                            {% endif %}
+                        </div>
+                        <span>{{ conversation.other_user.first_name|default:conversation.other_user.username }}</span>
+                        {% if conversation.last_message %}
+                            <small class="conversation-time">{{ conversation.last_message.created_at|date:"M d, H:i" }}</small>
+                        {% endif %}
+                    </a>
+                {% empty %}
+                    <div class="empty-state">Start a swap request or open an item chat to begin messaging.</div>
+                {% endfor %}
+            </div>
+            <div class="chat-panel">
+                {% if active_conversation %}
+                    <div class="chat-header">
+                        <h3>{{ active_conversation.item.title }}</h3>
+                        <p>Chatting with {{ active_conversation.other_user.first_name|default:active_conversation.other_user.username }}</p>
+                    </div>
+                    <div class="message-list">
+                        {% for message in active_messages %}
+                            <div class="message-bubble {% if message.sender_id == user.id %}mine{% endif %}">
+                                <strong>{{ message.sender.first_name|default:message.sender.username }}</strong>
+                                <p>{{ message.body }}</p>
+                                <small class="message-time">{{ message.created_at|date:"M d, H:i" }}</small>
+                            </div>
+                        {% empty %}
+                            <div class="empty-state">No messages yet. Break the ice about sizing, pickup, or delivery.</div>
+                        {% endfor %}
+                    </div>
+                    <form method="post" action="{% url 'send_message' active_conversation.pk %}" class="message-form">
+                        {% csrf_token %}
+                        {{ message_form.body }}
+                        <button class="button button-primary" type="submit">Send Message</button>
+                    </form>
+                {% else %}
+                    <div class="empty-state">Select a conversation to start chatting privately.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="section-heading top-gap">
+            <h2>Recent Swap Activity</h2>
+            <p>Requests, completions, and marketplace movement around your items.</p>
+        </div>
+        <div class="swap-list">
+            {% for swap in recent_swaps %}
+                <div class="swap-row">
+                    <div>
+                        <strong>{{ swap.item.title|default:"Removed listing" }}</strong>
+                        <p>
+                            {% if swap.initiator_id == user.id %}
+                                You requested from {{ swap.recipient.first_name|default:swap.recipient.username }}
+                            {% else %}
+                                {{ swap.initiator.first_name|default:swap.initiator.username }} requested from you
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="swap-meta">
+                        <span>{{ swap.points_delta }} points</span>
+                        <span class="status-badge status-{{ swap.status }}">{{ swap.get_status_display }}</span>
+                        {% if swap.status == "completed" %}
+                            <span class="status-badge status-{{ swap.fulfillment_status }}">{{ swap.get_fulfillment_status_display }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">No swap activity yet. Once requests start coming in, they will appear here.</div>
             {% endfor %}
         </div>
     </div>

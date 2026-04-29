@@ -17,6 +17,8 @@
                 {% if user.is_authenticated %}
                     <a href="{% url 'add_item' %}">List Item</a>
                     <a href="{% url 'dashboard' %}">Dashboard</a>
+                    <a href="{% url 'my_orders' %}">My Orders</a>
+                    <a href="{% url 'my_shipments' %}">My Shipments</a>
                     <form method="post" action="{% url 'logout' %}">
                         {% csrf_token %}
                         <button class="link-button" type="submit">Logout</button>
