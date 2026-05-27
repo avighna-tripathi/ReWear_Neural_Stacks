@@ -1,6 +1,9 @@
 import os
 from pathlib import Path
 
+import dj_database_url
+import pymysql
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,9 +23,9 @@ def load_env_file() -> None:
 
 load_env_file()
 
-SECRET_KEY = "django-insecure-rewear-local-dev-key"
-DEBUG = True
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "testserver"]
+SECRET_KEY = os.environ.get("SECRET_KEY", "fallback-key")
+DEBUG = os.environ.get("DEBUG", "False") == "True"
+ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -36,6 +39,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -63,18 +67,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "rewear_project.wsgi.application"
 
+pymysql.install_as_MySQLdb()
+
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": os.getenv("MYSQL_DATABASE", "rewear_db"),
-        "USER": os.getenv("MYSQL_USER", "root"),
-        "PASSWORD": os.getenv("MYSQL_PASSWORD", ""),
-        "HOST": os.getenv("MYSQL_HOST", "127.0.0.1"),
-        "PORT": os.getenv("MYSQL_PORT", "3306"),
-        "OPTIONS": {
-            "charset": "utf8mb4",
-        },
-    }
+    "default": dj_database_url.config(default="sqlite:///db.sqlite3")
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -89,9 +85,10 @@ TIME_ZONE = "Asia/Calcutta"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
