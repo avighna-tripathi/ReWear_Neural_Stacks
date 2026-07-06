@@ -400,7 +400,25 @@
                 .replaceAll('"', "&quot;")
                 .replaceAll("'", "&#39;");
 
-        const buildConversationHref = (id) => `/dashboard/?conversation=${id}`;
+        const getConversationSignature = (conversations) =>
+            conversations.map((conversation) => [
+                conversation.id,
+                conversation.unread_count,
+                conversation.last_message_time,
+                conversation.is_active ? 1 : 0,
+            ].join(":")).join("|");
+
+        const getActiveConversationSignature = (activeConversation) => {
+            if (!activeConversation) {
+                return "none";
+            }
+            return [
+                activeConversation.id,
+                activeConversation.title,
+                activeConversation.other_user,
+                activeConversation.messages.map((message) => `${message.id}:${message.created_at}`).join("|"),
+            ].join("::");
+        };
 
         const renderConversationList = () => {
             if (!chatState.conversations.length) {
@@ -493,24 +511,39 @@
         const applyChatState = (nextState, options = {}) => {
             const previousConversationId = currentConversationId;
             const previousMessageList = getMessageList();
-            const previousScrollOffset = previousMessageList
-                ? previousMessageList.scrollHeight - previousMessageList.scrollTop
-                : null;
+            const previousScrollTop = previousMessageList ? previousMessageList.scrollTop : 0;
+            const previousScrollHeight = previousMessageList ? previousMessageList.scrollHeight : 0;
+            const wasNearBottom = previousMessageList
+                ? previousScrollHeight - (previousScrollTop + previousMessageList.clientHeight) < 32
+                : true;
             const previousDraft = previousConversationId === (nextState.active_conversation ? nextState.active_conversation.id : null)
                 ? (getTextarea()?.value || "")
                 : "";
+            const listChanged =
+                getConversationSignature(chatState.conversations) !== getConversationSignature(nextState.conversations);
+            const panelChanged =
+                getActiveConversationSignature(chatState.active_conversation) !==
+                getActiveConversationSignature(nextState.active_conversation);
 
             chatState = nextState;
             currentConversationId = chatState.active_conversation ? chatState.active_conversation.id : null;
-            renderConversationList();
-            renderChatPanel({ draftValue: options.focusInput ? "" : previousDraft });
+            if (listChanged) {
+                renderConversationList();
+            }
+            if (panelChanged) {
+                renderChatPanel({ draftValue: options.focusInput ? "" : previousDraft });
+            }
 
             if (options.scrollToLatest !== false) {
                 scrollToLatest();
-            } else if (previousScrollOffset !== null) {
+            } else if (panelChanged && previousMessageList) {
                 const nextMessageList = getMessageList();
                 if (nextMessageList) {
-                    nextMessageList.scrollTop = Math.max(nextMessageList.scrollHeight - previousScrollOffset, 0);
+                    if (wasNearBottom) {
+                        nextMessageList.scrollTop = nextMessageList.scrollHeight;
+                    } else {
+                        nextMessageList.scrollTop = previousScrollTop;
+                    }
                 }
             }
             if (options.focusInput) {
