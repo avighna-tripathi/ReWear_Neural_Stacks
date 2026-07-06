@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -459,13 +460,28 @@ def send_message(request, conversation_id):
 
     form = MessageForm(request.POST)
     if form.is_valid():
-        Message.objects.create(
+        message = Message.objects.create(
             conversation=conversation,
             sender=request.user,
             body=form.cleaned_data["body"].strip(),
         )
         conversation.save(update_fields=["updated_at"])
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "message": {
+                        "id": message.pk,
+                        "body": message.body,
+                        "sender": message.sender.first_name or message.sender.username,
+                        "sender_id": message.sender_id,
+                        "created_at": timezone.localtime(message.created_at).strftime("%b %d, %H:%M"),
+                    },
+                }
+            )
         messages.success(request, "Message sent.")
     else:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse({"ok": False, "error": "Please enter a message before sending."}, status=400)
         messages.error(request, "Please enter a message before sending.")
     return redirect(f"/dashboard/?conversation={conversation.pk}")

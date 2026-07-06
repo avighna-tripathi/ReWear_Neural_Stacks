@@ -356,6 +356,7 @@ button { border: 0; cursor: pointer; }
     max-height: 420px;
     overflow-y: auto;
     margin: 1rem 0;
+    scroll-behavior: smooth;
 }
 .message-bubble {
     max-width: 85%;
@@ -373,6 +374,10 @@ button { border: 0; cursor: pointer; }
 .message-form {
     display: grid;
     gap: 0.75rem;
+}
+.message-form button[disabled] {
+    opacity: 0.75;
+    cursor: wait;
 }
 .owner-card { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
 .auth-shell {
