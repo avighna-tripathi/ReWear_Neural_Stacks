@@ -292,30 +292,35 @@
             <h2>Community Chat</h2>
             <p>Private conversations between two users around a listing or swap.</p>
         </div>
-        <div class="chat-layout">
-            <div class="conversation-list">
+        <div class="chat-layout" data-chat-root data-chat-endpoint="{% url 'dashboard_chat_data' %}">
+            <div class="conversation-list" data-conversation-list>
                 {% for conversation in conversations %}
-                    <a class="conversation-link {% if active_conversation and active_conversation.pk == conversation.pk %}active{% endif %}" href="{% url 'dashboard' %}?conversation={{ conversation.pk }}">
+                    <a
+                        class="conversation-link {% if active_conversation and active_conversation.pk == conversation.pk %}active{% endif %}"
+                        href="{% url 'dashboard' %}?conversation={{ conversation.pk }}"
+                        data-conversation-link
+                        data-conversation-id="{{ conversation.pk }}"
+                    >
                         <div class="conversation-row">
-                            <strong>{{ conversation.item.title }}</strong>
+                            <strong data-conversation-title>{{ conversation.item.title }}</strong>
                             {% if conversation.unread_count %}
-                                <span class="unread-badge">{{ conversation.unread_count }}</span>
+                                <span class="unread-badge" data-conversation-unread>{{ conversation.unread_count }}</span>
                             {% endif %}
                         </div>
-                        <span>{{ conversation.other_user.first_name|default:conversation.other_user.username }}</span>
+                        <span data-conversation-other-user>{{ conversation.other_user.first_name|default:conversation.other_user.username }}</span>
                         {% if conversation.last_message %}
-                            <small class="conversation-time">{{ conversation.last_message.created_at|date:"M d, H:i" }}</small>
+                            <small class="conversation-time" data-conversation-time>{{ conversation.last_message.created_at|date:"M d, H:i" }}</small>
                         {% endif %}
                     </a>
                 {% empty %}
                     <div class="empty-state">Start a swap request or open an item chat to begin messaging.</div>
                 {% endfor %}
             </div>
-            <div class="chat-panel">
+            <div class="chat-panel" data-chat-panel>
                 {% if active_conversation %}
-                    <div class="chat-header">
-                        <h3>{{ active_conversation.item.title }}</h3>
-                        <p>Chatting with {{ active_conversation.other_user.first_name|default:active_conversation.other_user.username }}</p>
+                    <div class="chat-header" data-chat-header>
+                        <h3 data-chat-title>{{ active_conversation.item.title }}</h3>
+                        <p data-chat-subtitle>Chatting with {{ active_conversation.other_user.first_name|default:active_conversation.other_user.username }}</p>
                     </div>
                     <div class="message-list" data-message-list>
                         {% for message in active_messages %}
@@ -370,27 +375,187 @@
         </div>
     </div>
 </section>
-{% if active_conversation %}
+{{ chat_payload|json_script:"chat-payload" }}
 <script>
     (() => {
-        const form = document.querySelector("[data-message-form]");
-        const messageList = document.querySelector("[data-message-list]");
-        if (!form || !messageList) {
+        const root = document.querySelector("[data-chat-root]");
+        const payloadNode = document.getElementById("chat-payload");
+        if (!root || !payloadNode) {
             return;
         }
 
-        const textarea = form.querySelector("textarea");
-        const submitButton = form.querySelector("button[type='submit']");
+        const conversationList = root.querySelector("[data-conversation-list]");
+        const chatPanel = root.querySelector("[data-chat-panel]");
+        let chatState = JSON.parse(payloadNode.textContent);
+        let currentConversationId = chatState.active_conversation ? chatState.active_conversation.id : null;
+        let pollTimer = null;
+        let requestInFlight = false;
+
+        const escapeHtml = (value) =>
+            String(value)
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+
+        const buildConversationHref = (id) => `/dashboard/?conversation=${id}`;
+
+        const renderConversationList = () => {
+            if (!chatState.conversations.length) {
+                conversationList.innerHTML = '<div class="empty-state">Start a swap request or open an item chat to begin messaging.</div>';
+                return;
+            }
+
+            conversationList.innerHTML = chatState.conversations.map((conversation) => `
+                <a
+                    class="conversation-link ${conversation.is_active ? "active" : ""}"
+                    href="${conversation.url}"
+                    data-conversation-link
+                    data-conversation-id="${conversation.id}"
+                >
+                    <div class="conversation-row">
+                        <strong data-conversation-title>${escapeHtml(conversation.title)}</strong>
+                        ${conversation.unread_count ? `<span class="unread-badge" data-conversation-unread>${conversation.unread_count}</span>` : ""}
+                    </div>
+                    <span data-conversation-other-user>${escapeHtml(conversation.other_user)}</span>
+                    ${conversation.last_message_time ? `<small class="conversation-time" data-conversation-time>${escapeHtml(conversation.last_message_time)}</small>` : ""}
+                </a>
+            `).join("");
+        };
+
+        const getMessageList = () => chatPanel.querySelector("[data-message-list]");
+        const getForm = () => chatPanel.querySelector("[data-message-form]");
+        const getTextarea = () => chatPanel.querySelector("textarea");
 
         const scrollToLatest = () => {
+            const messageList = getMessageList();
+            if (!messageList) {
+                return;
+            }
             messageList.scrollTop = messageList.scrollHeight;
         };
 
-        scrollToLatest();
+        const renderChatPanel = (options = {}) => {
+            const active = chatState.active_conversation;
+            if (!active) {
+                chatPanel.innerHTML = '<div class="empty-state">Select a conversation to start chatting privately.</div>';
+                return;
+            }
 
-        form.addEventListener("submit", async (event) => {
+            const messageMarkup = active.messages.length
+                ? active.messages.map((message) => `
+                    <div class="message-bubble ${message.mine ? "mine" : ""}">
+                        <strong>${escapeHtml(message.sender)}</strong>
+                        <p>${escapeHtml(message.body)}</p>
+                        <small class="message-time">${escapeHtml(message.created_at)}</small>
+                    </div>
+                `).join("")
+                : '<div class="empty-state">No messages yet. Break the ice about sizing, pickup, or delivery.</div>';
+
+            chatPanel.innerHTML = `
+                <div class="chat-header" data-chat-header>
+                    <h3 data-chat-title>${escapeHtml(active.title)}</h3>
+                    <p data-chat-subtitle>Chatting with ${escapeHtml(active.other_user)}</p>
+                </div>
+                <div class="message-list" data-message-list>${messageMarkup}</div>
+                <form method="post" action="${active.send_url}" class="message-form" data-message-form>
+                    <input type="hidden" name="csrfmiddlewaretoken" value="${escapeHtml(getCsrfToken())}">
+                    <textarea name="body" rows="3" placeholder="Write a message about sizing, pickup, or shipping..." maxlength="1000"></textarea>
+                    <button class="button button-primary" type="submit">Send Message</button>
+                </form>
+            `;
+            if (options.draftValue) {
+                const textarea = getTextarea();
+                if (textarea) {
+                    textarea.value = options.draftValue;
+                }
+            }
+        };
+
+        const getCsrfToken = () => {
+            const input = document.querySelector("[name=csrfmiddlewaretoken]");
+            return input ? input.value : "";
+        };
+
+        const updateHistory = () => {
+            const url = new URL(window.location.href);
+            if (currentConversationId) {
+                url.searchParams.set("conversation", currentConversationId);
+            } else {
+                url.searchParams.delete("conversation");
+            }
+            window.history.replaceState({}, "", url);
+        };
+
+        const applyChatState = (nextState, options = {}) => {
+            const previousConversationId = currentConversationId;
+            const previousMessageList = getMessageList();
+            const previousScrollOffset = previousMessageList
+                ? previousMessageList.scrollHeight - previousMessageList.scrollTop
+                : null;
+            const previousDraft = previousConversationId === (nextState.active_conversation ? nextState.active_conversation.id : null)
+                ? (getTextarea()?.value || "")
+                : "";
+
+            chatState = nextState;
+            currentConversationId = chatState.active_conversation ? chatState.active_conversation.id : null;
+            renderConversationList();
+            renderChatPanel({ draftValue: options.focusInput ? "" : previousDraft });
+
+            if (options.scrollToLatest !== false) {
+                scrollToLatest();
+            } else if (previousScrollOffset !== null) {
+                const nextMessageList = getMessageList();
+                if (nextMessageList) {
+                    nextMessageList.scrollTop = Math.max(nextMessageList.scrollHeight - previousScrollOffset, 0);
+                }
+            }
+            if (options.focusInput) {
+                getTextarea()?.focus();
+            }
+            updateHistory();
+        };
+
+        const loadConversation = async (conversationId, options = {}) => {
+            if (requestInFlight) {
+                return;
+            }
+            requestInFlight = true;
+            try {
+                const endpoint = new URL(root.dataset.chatEndpoint, window.location.origin);
+                if (conversationId) {
+                    endpoint.searchParams.set("conversation", conversationId);
+                }
+                const response = await fetch(endpoint, {
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    },
+                    credentials: "same-origin"
+                });
+                if (!response.ok) {
+                    throw new Error("Could not load this conversation.");
+                }
+                const nextState = await response.json();
+                applyChatState(nextState, options);
+            } catch (error) {
+                if (!options.silent) {
+                    window.alert(error.message);
+                }
+            } finally {
+                requestInFlight = false;
+            }
+        };
+
+        const handleSubmit = async (event) => {
             event.preventDefault();
 
+            const form = getForm();
+            const textarea = getTextarea();
+            const submitButton = form?.querySelector("button[type='submit']");
+            if (!form || !textarea || !submitButton) {
+                return;
+            }
             if (!textarea || !textarea.value.trim()) {
                 textarea?.focus();
                 return;
@@ -416,29 +581,48 @@
                     throw new Error(data.error || "Message could not be sent.");
                 }
 
-                const bubble = document.createElement("div");
-                bubble.className = "message-bubble mine";
-                bubble.innerHTML = `
-                    <strong></strong>
-                    <p></p>
-                    <small class="message-time"></small>
-                `;
-                bubble.querySelector("strong").textContent = data.message.sender;
-                bubble.querySelector("p").textContent = data.message.body;
-                bubble.querySelector(".message-time").textContent = data.message.created_at;
-
-                messageList.appendChild(bubble);
                 form.reset();
-                textarea.focus();
-                scrollToLatest();
+                await loadConversation(currentConversationId, { scrollToLatest: true, focusInput: true, silent: true });
             } catch (error) {
                 window.alert(error.message);
             } finally {
                 submitButton.disabled = false;
                 submitButton.textContent = originalLabel;
             }
+        };
+
+        root.addEventListener("click", (event) => {
+            const link = event.target.closest("[data-conversation-link]");
+            if (!link) {
+                return;
+            }
+            event.preventDefault();
+            const conversationId = link.dataset.conversationId;
+            if (!conversationId || Number(conversationId) === currentConversationId) {
+                return;
+            }
+            loadConversation(conversationId, { scrollToLatest: true, focusInput: false });
         });
+
+        root.addEventListener("submit", (event) => {
+            if (event.target.matches("[data-message-form]")) {
+                handleSubmit(event);
+            }
+        });
+
+        const startPolling = () => {
+            if (pollTimer) {
+                window.clearInterval(pollTimer);
+            }
+            pollTimer = window.setInterval(() => {
+                loadConversation(currentConversationId, { scrollToLatest: false, silent: true });
+            }, 5000);
+        };
+
+        renderConversationList();
+        renderChatPanel();
+        scrollToLatest();
+        startPolling();
     })();
 </script>
-{% endif %}
 {% endblock %}

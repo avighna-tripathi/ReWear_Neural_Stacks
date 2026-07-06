@@ -36,6 +36,98 @@ def _get_or_create_conversation(item, user_one, user_two, swap=None):
     return conversation
 
 
+def _mark_conversation_read(conversation, user):
+    unread_ids = list(
+        conversation.messages.filter(read_at__isnull=True).exclude(sender=user).values_list("pk", flat=True)
+    )
+    if unread_ids:
+        read_time = timezone.now()
+        Message.objects.filter(pk__in=unread_ids).update(read_at=read_time)
+
+
+def _serialize_message(message, user):
+    return {
+        "id": message.pk,
+        "body": message.body,
+        "sender": message.sender.first_name or message.sender.username,
+        "sender_id": message.sender_id,
+        "mine": message.sender_id == user.id,
+        "created_at": timezone.localtime(message.created_at).strftime("%b %d, %H:%M"),
+    }
+
+
+def _serialize_conversation(conversation, user, active_conversation_id=None):
+    other_user = conversation.participant_two if conversation.participant_one_id == user.id else conversation.participant_one
+    other_user_id = other_user.id
+    last_message = conversation.messages.order_by("-created_at").first()
+    return {
+        "id": conversation.pk,
+        "title": conversation.item.title,
+        "other_user": other_user.first_name or other_user.username,
+        "unread_count": conversation.messages.filter(sender_id=other_user_id, read_at__isnull=True).count(),
+        "last_message_time": timezone.localtime(last_message.created_at).strftime("%b %d, %H:%M") if last_message else "",
+        "is_active": conversation.pk == active_conversation_id,
+        "url": f"/dashboard/?conversation={conversation.pk}",
+    }
+
+
+def _get_chat_state(user, selected_conversation_id=None):
+    conversations = list(
+        Conversation.objects.filter(Q(participant_one=user) | Q(participant_two=user)).select_related(
+            "item", "swap", "participant_one", "participant_two"
+        )
+    )
+    active_conversation = None
+    if selected_conversation_id:
+        active_conversation = next((c for c in conversations if str(c.pk) == str(selected_conversation_id)), None)
+    if not active_conversation and conversations:
+        active_conversation = conversations[0]
+
+    if active_conversation:
+        _mark_conversation_read(active_conversation, user)
+        active_messages = list(active_conversation.messages.select_related("sender"))
+        active_data = {
+            "id": active_conversation.pk,
+            "title": active_conversation.item.title,
+            "other_user": (
+                active_conversation.participant_two.first_name or active_conversation.participant_two.username
+                if active_conversation.participant_one_id == user.id
+                else active_conversation.participant_one.first_name or active_conversation.participant_one.username
+            ),
+            "send_url": f"/conversation/{active_conversation.pk}/message/",
+            "messages": [_serialize_message(message, user) for message in active_messages],
+        }
+    else:
+        active_messages = []
+        active_data = None
+
+    conversation_data = [
+        _serialize_conversation(conversation, user, active_data["id"] if active_data else None)
+        for conversation in conversations
+    ]
+
+    for conversation in conversations:
+        conversation.other_user = (
+            conversation.participant_two if conversation.participant_one_id == user.id else conversation.participant_one
+        )
+        conversation.unread_count = next(
+            (item["unread_count"] for item in conversation_data if item["id"] == conversation.pk),
+            0,
+        )
+        last_message = conversation.messages.order_by("-created_at").first()
+        conversation.last_message = last_message
+
+    return {
+        "conversations": conversations,
+        "chat_payload": {
+            "conversations": conversation_data,
+            "active_conversation": active_data,
+        },
+        "active_conversation": active_conversation,
+        "active_messages": active_messages,
+    }
+
+
 def home(request):
     featured_items = Item.objects.select_related("owner")[:4]
     categories = [
@@ -187,38 +279,7 @@ def _build_dashboard_context(user, selected_conversation_id=None):
         fulfillment_status="shipped",
     )[:6]
 
-    conversations = list(
-        Conversation.objects.filter(
-            Q(participant_one=user) | Q(participant_two=user)
-        ).select_related("item", "swap", "participant_one", "participant_two")
-    )
-
-    active_conversation = None
-    active_messages = []
-    if selected_conversation_id:
-        active_conversation = next((c for c in conversations if str(c.pk) == selected_conversation_id), None)
-    if not active_conversation and conversations:
-        active_conversation = conversations[0]
-    if active_conversation:
-        active_messages = list(active_conversation.messages.select_related("sender"))
-        if selected_conversation_id:
-            unread_ids = [
-                message.pk
-                for message in active_messages
-                if message.sender_id != user.id and message.read_at is None
-            ]
-            if unread_ids:
-                read_time = timezone.now()
-                Message.objects.filter(pk__in=unread_ids).update(read_at=read_time)
-                for message in active_messages:
-                    if message.pk in unread_ids:
-                        message.read_at = read_time
-
-    for conversation in conversations:
-        other_user_id = conversation.participant_two_id if conversation.participant_one_id == user.id else conversation.participant_one_id
-        conversation.other_user = conversation.participant_two if conversation.participant_one_id == user.id else conversation.participant_one
-        conversation.unread_count = conversation.messages.filter(sender_id=other_user_id, read_at__isnull=True).count()
-        conversation.last_message = conversation.messages.order_by("-created_at").first()
+    chat_state = _get_chat_state(user, selected_conversation_id)
 
     for swap in completed_swaps_needing_address:
         swap.address_form = ShippingAddressForm(prefix=f"swap-{swap.pk}")
@@ -243,9 +304,10 @@ def _build_dashboard_context(user, selected_conversation_id=None):
         "completed_swaps_with_address": completed_swaps_with_address,
         "owner_shipping_actions": owner_shipping_actions,
         "buyer_delivery_actions": buyer_delivery_actions,
-        "conversations": conversations,
-        "active_conversation": active_conversation,
-        "active_messages": active_messages,
+        "conversations": chat_state["conversations"],
+        "active_conversation": chat_state["active_conversation"],
+        "active_messages": chat_state["active_messages"],
+        "chat_payload": chat_state["chat_payload"],
         "message_form": MessageForm(),
     }
 
@@ -444,6 +506,12 @@ def open_item_conversation(request, pk):
         return redirect("item_detail", pk=pk)
     conversation = _get_or_create_conversation(item, request.user, item.owner)
     return redirect(f"/dashboard/?conversation={conversation.pk}")
+
+
+@login_required
+def dashboard_chat_data(request):
+    chat_state = _get_chat_state(request.user, request.GET.get("conversation"))
+    return JsonResponse(chat_state["chat_payload"])
 
 
 @login_required
