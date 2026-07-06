@@ -390,6 +390,7 @@
         let currentConversationId = chatState.active_conversation ? chatState.active_conversation.id : null;
         let pollTimer = null;
         let requestInFlight = false;
+        let typingLockUntil = 0;
 
         const escapeHtml = (value) =>
             String(value)
@@ -427,6 +428,7 @@
         const getMessageList = () => chatPanel.querySelector("[data-message-list]");
         const getForm = () => chatPanel.querySelector("[data-message-form]");
         const getTextarea = () => chatPanel.querySelector("textarea");
+        const isTypingLocked = () => Date.now() < typingLockUntil;
 
         const scrollToLatest = () => {
             const messageList = getMessageList();
@@ -521,6 +523,9 @@
             if (requestInFlight) {
                 return;
             }
+            if (options.respectTypingLock && isTypingLocked()) {
+                return;
+            }
             requestInFlight = true;
             try {
                 const endpoint = new URL(root.dataset.chatEndpoint, window.location.origin);
@@ -610,12 +615,28 @@
             }
         });
 
+        root.addEventListener("input", (event) => {
+            if (event.target.matches("[data-message-form] textarea")) {
+                typingLockUntil = Date.now() + 4000;
+            }
+        });
+
+        root.addEventListener("focusin", (event) => {
+            if (event.target.matches("[data-message-form] textarea")) {
+                typingLockUntil = Date.now() + 4000;
+            }
+        });
+
         const startPolling = () => {
             if (pollTimer) {
                 window.clearInterval(pollTimer);
             }
             pollTimer = window.setInterval(() => {
-                loadConversation(currentConversationId, { scrollToLatest: false, silent: true });
+                loadConversation(currentConversationId, {
+                    scrollToLatest: false,
+                    silent: true,
+                    respectTypingLock: true,
+                });
             }, 5000);
         };
 
